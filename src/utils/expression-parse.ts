@@ -7,15 +7,27 @@ export type AstNode = {
 
 type OperatorKey = keyof typeof OPERATORS;
 
-const OPERATORS = {
+export const OPERATORS = {
     'AND': { precedence: 2, associativity: 'left' },
     'NAND': { precedence: 2, associativity: 'left' },
     'OR': { precedence: 1, associativity: 'left' },
     'NOR': { precedence: 1, associativity: 'left' },
     'NOT': { precedence: 3, associativity: 'right' },
     'XOR': { precedence: 2, associativity: 'left' },
-    'XNOR': { precedence: 2, associativity: 'left' },
+    // 'XNOR': { precedence: 2, associativity: 'left' },
 };
+
+const boolCalculation = (operation: string, input: boolean[]): boolean => {
+    switch (operation.toLocaleUpperCase()) {
+        case "AND": return input[0] && input[1];
+        case "NAND": return !(input[0] && input[1]);
+        case "OR": return input[0] || input[1];
+        case "NOR": return !(input[0] || input[1]);
+        case "XOR": return input[0] !== input[1];
+        case "NOT": return !input[0];
+        default: return false;
+    }
+}
 
 const isOperator = (token: string) => {
     return Object.keys(OPERATORS).includes(token);
@@ -26,14 +38,33 @@ const tokenize = (expression: string) => {
     return expression.split(' ').filter(x => x !== '');
 }
 
-const sample = "A XOR NOT ((A OR NOT B) XNOR (A NAND NOT B NOR C))";
-
-console.log(tokenize(sample));
-
 export class parser {
     expression: string;
+    ast: AstNode;
     constructor(expression: string) {
         this.expression = expression;
+
+        this.ast = this.parse();
+    }
+
+    setExpression(expression: string) {
+        this.expression = expression;
+        this.ast = this.parse();
+    }
+
+    getVariables(): string[] {
+        const variables = new Set<string>();
+
+        const findRecursive = (expression: AstNode) => {
+            if (expression.type === "variable") {
+                variables.add(expression.value);
+            }
+            if (expression.left) findRecursive(expression.left);
+            if (expression.right) findRecursive(expression.right);
+        }
+
+        findRecursive(this.ast);
+        return Array.from(variables);
     }
 
     /**
@@ -101,15 +132,9 @@ export class parser {
                 if (chosenIndex >= 0) {
                     const chosenOperator = parserStack[chosenIndex].value as OperatorKey;
 
-                    if (OPERATORS[chosenOperator].associativity === 'left') {
-                        associateLeft(chosenIndex, parserStack);
-                    }
-                    else if (OPERATORS[chosenOperator].associativity === 'right') {
-                        associateRight(chosenIndex, parserStack);
-                    }
-                    else {
-                        throw new Error(`Invalid associativity "${OPERATORS[chosenOperator].associativity}"`);
-                    }
+                    if (OPERATORS[chosenOperator].associativity === 'left') associateLeft(chosenIndex, parserStack);
+                    else if (OPERATORS[chosenOperator].associativity === 'right') associateRight(chosenIndex, parserStack);
+                    else throw new Error(`Invalid associativity "${OPERATORS[chosenOperator].associativity}"`);
                 }
 
                 associatedStackLength = parserStack.length;
@@ -121,7 +146,7 @@ export class parser {
             let level = 1;
             while (i < tokens.length && level !== 0) {
                 if (tokens[i] === "(") level += 1;
-                if (tokens[i] === ")") level -= 1;
+                else if (tokens[i] === ")") level -= 1;
                 i += 1;
             }
             if (level !== 0) throw new Error("Expect closing bracket");
@@ -156,14 +181,14 @@ export class parser {
                 const token = tokens[cursor];
                 cursor += 1;
                 if (token === ")") continue;
-                if (token === "(") {
+                else if (token === "(") {
                     // find the corresponding closing bracket
                     const correspondingEnd = findClosingBracket(cursor, tokens);
                     parserStack.push(parse(tokens.slice(cursor, correspondingEnd)));
                     cursor = correspondingEnd + 1; // jump over the closing bracket
                 }
-                else if (isOperator(token)) {
-                    pushOperator(parserStack, token);
+                else if (isOperator(token.toLocaleUpperCase())) {
+                    pushOperator(parserStack, token.toLocaleUpperCase());
                 }
                 else {
                     pushVariable(parserStack, token);
@@ -173,7 +198,6 @@ export class parser {
             associateAll(parserStack);
 
             if (parserStack.length !== 1) {
-                console.log(parserStack);
                 throw new Error("Expecting another operator");
             }
             return parserStack[0];
@@ -181,6 +205,26 @@ export class parser {
 
         return parse(tokens);
     }
-}
 
-console.log(JSON.stringify((new parser(sample)).parse(), null, 2));
+    evaluate(input: Record<string, boolean>){
+        const variables = this.getVariables();
+        for (const variable of variables) {
+            if (typeof input[variable] !== "boolean") {
+                throw new Error(`Variable "${variable}" is not set`);
+            }
+        }
+
+        const evaluateRecursive = (expression: AstNode | null, input: Record<string, boolean>): boolean => {
+            if(expression === null) return false;
+            if(expression.type === "variable") return input[expression.value];
+            if(expression.type === "expression") {
+                const left = evaluateRecursive(expression.left, input);
+                const right = evaluateRecursive(expression.right, input);
+                return boolCalculation(expression.value, [right, left]);
+            }
+            throw new Error("Invalid expression");
+        }
+
+        return evaluateRecursive(this.ast, input);
+    }
+}

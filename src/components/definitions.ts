@@ -1,9 +1,9 @@
-export type ComponentProps = Record<string, any>;
+export type CommonPropsType = Record<string, unknown>;
 
-export class MyComponent {
-    props: ComponentProps;
+export class MyComponent<T extends CommonPropsType> {
+    props: T;
     container: HTMLDivElement;
-    constructor(props: ComponentProps) {
+    constructor(props: T) {
         this.props = props;
         this.container = document.createElement("div");
     }
