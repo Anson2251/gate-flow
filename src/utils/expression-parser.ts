@@ -17,7 +17,7 @@ export const OPERATORS = {
     // 'XNOR': { precedence: 2, associativity: 'left' },
 };
 
-const boolCalculation = (operation: string, input: boolean[]): boolean => {
+export function boolCalculation (operation: string, input: boolean[]): boolean {
     switch (operation.toLocaleUpperCase()) {
         case "AND": return input[0] && input[1];
         case "NAND": return !(input[0] && input[1]);
@@ -38,13 +38,11 @@ const tokenize = (expression: string) => {
     return expression.split(' ').filter(x => x !== '');
 }
 
-export class parser {
+export class ExpressionParser {
     expression: string;
     ast: AstNode;
     constructor(expression: string) {
-        this.expression = expression;
-
-        this.ast = this.parse();
+        this.setExpression(expression);
     }
 
     setExpression(expression: string) {
@@ -74,8 +72,9 @@ export class parser {
      * 
      * @returns The root of the abstract syntax tree.
      */
-    parse(): AstNode {
+    parse(): AstNode | null {
         const tokens = tokenize(this.expression);
+        if(tokens.length === 0) return null;
 
         const associateLeft = (cur: number, parserStack: AstNode[]) => {
             cur -= 1; // operator appears in the middle

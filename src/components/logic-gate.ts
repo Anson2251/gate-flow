@@ -2,12 +2,14 @@ import { MyComponent } from "./definitions";
 import GateAssetData from "@/assets/gate-icons-data.json";
 import "@/assets/logic-gate.less";
 
-import nandGateImage from "@/assets/nand-gate.png"
-import andGateImage from "@/assets/and-gate.png"
-import norGateImage from "@/assets/nor-gate.png"
-import orGateImage from "@/assets/or-gate.png"
-import xorGateImage from "@/assets/xor-gate.png"
-import notGateImage from "@/assets/not-gate.png"
+import nandGateImage from "@/assets/imgs/nand-gate.png"
+import andGateImage from "@/assets/imgs/and-gate.png"
+import norGateImage from "@/assets/imgs/nor-gate.png"
+import orGateImage from "@/assets/imgs/or-gate.png"
+import xorGateImage from "@/assets/imgs/xor-gate.png"
+import notGateImage from "@/assets/imgs/not-gate.png"
+
+import { boolCalculation } from "@/utils/expression-parser";
 
 const imageMap = {
     "nand": nandGateImage,
@@ -18,17 +20,6 @@ const imageMap = {
     "not": notGateImage
 }
 
-const boolCalculation = (operation: string, input: boolean[]): boolean => {
-    switch (operation.toLocaleUpperCase()) {
-        case "AND": return input[0] && input[1];
-        case "NAND": return !(input[0] && input[1]);
-        case "OR": return input[0] || input[1];
-        case "NOR": return !(input[0] || input[1]);
-        case "XOR": return input[0] !== input[1];
-        case "NOT": return !input[0];
-        default: return false;
-    }
-}
 type GateAssetDataType = {
     [key: string]: {
         size: {
@@ -55,22 +46,27 @@ export class LogicGate extends MyComponent<LogicGateProps> {
     outputPointPositions: number[] = [0, 0];
     constructor(props: LogicGateProps) {
         super(props);
-
-        this.name = props.name;
-        this.type = props.type;
-        this.icon = imageMap[this.type];
-
-        this.inputPointPositions = gateAsset[this.type].input;
-        this.outputPointPositions = gateAsset[this.type].output;
-
-        this.container = document.createElement("div");
-        this.container.title = this.name;
-        this.container.className = "logic-gate";
-
-        this.container.style.backgroundImage = `url(${this.icon})`;
+        this.update(props);
+        
     }
 
     calculate(input: boolean[]): boolean {
         return boolCalculation(this.type, input);
+    }
+
+    onUpdate(): void {
+        this.name = this.props.name;
+        this.type = this.props.type.toLocaleLowerCase();
+        this.icon = imageMap[this.type];
+
+        this.inputPointPositions = gateAsset[this.type].input;
+        this.outputPointPositions = gateAsset[this.type].output;
+    }
+
+    render(): void {
+        this.container.title = this.name;
+        this.container.className = "logic-gate";
+
+        this.container.style.backgroundImage = `url(${this.icon})`;
     }
 }

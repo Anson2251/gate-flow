@@ -2,10 +2,16 @@ import { type CommonPropsType, MyComponent } from "./definitions";
 import { LogicGate } from "./logic-gate";
 
 export class MainLayout extends MyComponent<CommonPropsType> {
-    container: HTMLDivElement;
-    constructor(props: CommonPropsType) {
+    constructor(props: CommonPropsType = {}) {
         super(props);
-        this.container = document.createElement("div");
+        this.update(props);
+    }
+
+    onUpdate(oldProps: CommonPropsType, newProps: CommonPropsType): void {
+        console.log(oldProps, newProps);
+    }
+
+    render(): void {
         this.container.innerHTML = "Hello, world";
 
         const l = new LogicGate({ type: "not", name: "NOT" });
