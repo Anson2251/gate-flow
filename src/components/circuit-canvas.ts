@@ -1,5 +1,6 @@
 import { MyComponent } from "./definitions";
 import { LogicGate } from "./logic-gate";
+import { TextLabel } from "./text-label";
 
 import { ExpressionParser, type AstNode } from "@/utils/expression-parser";
 import { TreePlacer } from "@/utils/tree-placer";
@@ -24,13 +25,16 @@ export class CircuitCanvas extends MyComponent<CircuitCanvasType> {
     parser = new ExpressionParser("");
     placer = new TreePlacer({ h: 64, v: 64 }, { h: 24, v: 24 });
     gateMap = new Map<number, AbstractLogicGate>();
-    overviewGates
+    gateInputPositions: Record<number, number[][]> = {};
+    gateOutputPositions: Record<number, number[]> = {};
     ast: AstNode | null;
     variables: string[] = [];
+    labelPositions: Record<string, [number, number]> = {};
     constructor(props: CircuitCanvasType) {
         super(props);
         this.update(props);
     }
+
 
     onUpdate(): void {
         const expression = this.props.expression;
@@ -40,11 +44,7 @@ export class CircuitCanvas extends MyComponent<CircuitCanvasType> {
         this.gateMap = this.allocateGates();
 
         console.log(this.gateMap)
-
-        // this.gateMap = gates;
-        // this.gateInputMap = inputsMap;
-
-        // console.log(this.gateMap, this.gateInputMap);
+        console.log(this.gateMap.get(0))
     }
 
     allocateGates(): Map<number, AbstractLogicGate> {
@@ -53,7 +53,7 @@ export class CircuitCanvas extends MyComponent<CircuitCanvasType> {
         let gateCount = 0;
 
         const allocate = (node: AstNode): AbstractLogicGate => {
-            if(node.type !== "expression") throw new Error("Invalid expression");
+            if (node.type !== "expression") throw new Error("Invalid expression");
             const currentGateCount = gateCount;
             gateCount++;
             const inputs: (string | AbstractLogicGate)[] = [];
@@ -90,38 +90,46 @@ export class CircuitCanvas extends MyComponent<CircuitCanvasType> {
         return gates;
     }
 
-        //     allocate(this.ast);
+    renderLabels(gapSize: number): void {
+        this.variables.sort((a, b) => (a.charCodeAt(0) - b.charCodeAt(0))).forEach((v, i) => {
+            const size = 24;
+            const y = (gapSize * i) + (size / 2);
+            const label = new TextLabel({
+                text: v,
+                pos: [0, y],
+                color: "black",
+                size: size,
+                font: ""
+            });
+            this.labelPositions[v] = [0, y];
+            label.mount(this.container);
+        });
+    }
 
-        //     return {
-        //         gates: gates,
-        //         inputsMap: gatesInputMap
-        //     };
-        // }
+    renderGates(startPosition: [number, number]): void {
+        const generateOverview = (gate: AbstractLogicGate): OverviewGates => ({
+            id: gate.id,
+            children: gate.input.filter(x => typeof x !== "string").map(x => generateOverview(x))
+        })
+        this.placer.setRoot(generateOverview(this.gateMap.get(0)));
+        this.placer.calculate(startPosition);
 
-        render(): void {
-            const generateOverview = (gate: AbstractLogicGate): OverviewGates => {         
-                const overview: OverviewGates = {
-                    id: gate.id,
-                    children: gate.input.filter(x => typeof x !== "string").map(x => generateOverview(x))
-                }
+        for (const gate of this.gateMap.values()) {
+            const { x, y } = this.placer.query(gate.id);
+            const instance = new LogicGate({ type: gate.type, name: gate.type.toUpperCase(), size: 64 });
+            instance.setPosition(x, y);
 
-                return overview;
-            }
+            this.gateInputPositions[gate.id] = instance.inputPointPositions;
+            this.gateOutputPositions[gate.id] = instance.outputPointPositions;
 
-            const overview = generateOverview(this.gateMap.get(0));
-
-            console.log(overview)
-
-            this.placer.setRoot(overview);
-            this.placer.calculate();
-
-            for (const gate of this.gateMap.values()) {
-                const position = this.placer.query(gate.id);
-                const instance = new LogicGate({ type: gate.type, name: gate.type.toUpperCase() });
-                instance.container.style.left = `${position.x}px`;
-                instance.container.style.top = `${position.y}px`;
-
-                instance.mount(this.container);
-            }
+            instance.mount(this.container);
         }
     }
+
+    render(): void {
+        const inputLabelGap = 64;
+        this.renderLabels(inputLabelGap);
+        this.renderGates([48, 0]);
+        console.log(this)
+    }
+}

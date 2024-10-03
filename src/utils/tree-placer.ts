@@ -41,7 +41,7 @@ export class TreePlacer<T extends string | number | symbol> {
         return this.positions[value];
     }
 
-    calculate() {
+    calculate(startPosition = [0, 0]) {
         const positions = {} as Record<T, NodePosition>;
 
         // Recursively calculate positions for nodes
@@ -72,7 +72,8 @@ export class TreePlacer<T extends string | number | symbol> {
 
         const minX = Math.min(...Object.values(positions).map((pos: NodePosition) => pos.x));
         for (const key in positions) {
-            positions[key].x -= minX;
+            positions[key].x -= (minX - startPosition[0]);
+            positions[key].y += startPosition[1];
         }
 
         this.positions = positions;
