@@ -3,9 +3,8 @@ function cloneDeep<T>(obj: T): T {
 }
 
 interface Node<T> {
-    value: T;
-    left?: Node<T>;
-    right?: Node<T>;
+    id: T;
+    children: Node<T>[];
 }
 
 interface NodePosition {
@@ -15,12 +14,23 @@ interface NodePosition {
 
 export class TreePlacer<T extends string | number | symbol> {
     private root: Node<T>;
-    layerSize: number;
+    nodeSize: {
+        h: number;
+        v: number;
+    };
+    nodePadding: {
+        h: number;
+        v: number;
+    };
     private positions: Record<T, NodePosition>;
-    constructor(root: Node<T>, layerSize: number) {
-        this.root = cloneDeep(root);
-        this.layerSize = layerSize;
-        this.positions = this.calculate();
+
+    constructor(nodeSize: {h: number, v: number}, nodePadding: {h: number, v: number}, root?: Node<T>) {
+        this.nodeSize = nodeSize;
+        this.nodePadding = nodePadding;
+        if (root) {
+            this.root = root;
+            this.calculate();
+        }
     }
 
     setRoot(root: Node<T>) {
@@ -33,34 +43,38 @@ export class TreePlacer<T extends string | number | symbol> {
 
     calculate() {
         const positions = {} as Record<T, NodePosition>;
-        const layers: Node<T>[][] = [];
 
-        // Build the layers
-        let queue: Node<T>[] = [this.root];
-        while (queue.length > 0) {
-            const layer: Node<T>[] = queue;
-            layers.push(layer);
-            queue = [];
-            for (const node of layer) {
-                if (node.left) queue.push(node.left);
-                if (node.right) queue.push(node.right);
+        // Recursively calculate positions for nodes
+        const calculatePositions = (nodes: Node<T>[], depth: number, startY: number) => {
+            const x = 0 - (depth * (this.nodeSize.h + this.nodePadding.h)); // x decreases as depth increases (right to left)
+            const startLayerY = startY;
+
+            for (const node of nodes) {
+                if (node.children.length > 0) {
+                    startY = calculatePositions(node.children, depth + 1, startY);
+                }
+
+                // Assign position for this node
+                const y = (node.children.length === 0)
+                    ? (startY * (this.nodeSize.v + this.nodePadding.v))
+                    : (((startLayerY + startY - 1) / 2) * (this.nodeSize.v + this.nodePadding.v));
+
+                positions[node.id] = { x, y };
+
+                // Update Y for next node
+                if (node.children.length === 0) startY++;
             }
+
+            return startY;
         }
 
-        // Calculate the positions
-        for (let i = 0; i < layers.length; i++) {
-            const layer = layers[i];
-            const layerWidth = layer.length * this.layerSize;
-            const layerHeight = i * this.layerSize;
-            for (let j = 0; j < layer.length; j++) {
-                const node = layer[j];
-                const x = (j + 0.5) * this.layerSize - layerWidth / 2;
-                const y = layerHeight;
-                positions[node.value].x = x;
-                positions[node.value].y = y;
-            }
+        calculatePositions([this.root], 0, 0);
+
+        const minX = Math.min(...Object.values(positions).map((pos: NodePosition) => pos.x));
+        for (const key in positions) {
+            positions[key].x -= minX;
         }
 
-        return positions;
+        this.positions = positions;
     }
 }

@@ -1,5 +1,6 @@
 import { type CommonPropsType, MyComponent } from "./definitions";
-import { LogicGate } from "./logic-gate";
+
+import { CircuitCanvas } from "./circuit-canvas";
 
 export class MainLayout extends MyComponent<CommonPropsType> {
     constructor(props: CommonPropsType = {}) {
@@ -12,9 +13,8 @@ export class MainLayout extends MyComponent<CommonPropsType> {
     }
 
     render(): void {
-        this.container.innerHTML = "Hello, world";
 
-        const l = new LogicGate({ type: "not", name: "NOT" });
-        l.mount(this.container);
+        const c = new CircuitCanvas({ expression: "(C NAND (A AND B)) OR (A XOR C)", input: { A: true, B: false, C: true } });
+        c.mount(this.container);
     }
 }
