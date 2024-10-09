@@ -13,7 +13,7 @@ interface NodePosition {
 }
 
 export class TreePlacer<T extends string | number | symbol> {
-    private root: Node<T>;
+    private root?: Node<T>;
     nodeSize: {
         h: number;
         v: number;
@@ -22,7 +22,7 @@ export class TreePlacer<T extends string | number | symbol> {
         h: number;
         v: number;
     };
-    private positions: Record<T, NodePosition>;
+    private positions?: Record<T, NodePosition>;
 
     constructor(nodeSize: {h: number, v: number}, nodePadding: {h: number, v: number}, root?: Node<T>) {
         this.nodeSize = nodeSize;
@@ -38,10 +38,12 @@ export class TreePlacer<T extends string | number | symbol> {
     }
 
     query(value: T): NodePosition {
+        if (!this.positions) throw new Error("Positions not calculated yet");
         return this.positions[value];
     }
 
     calculate(startPosition = [0, 0]) {
+        if(!this.root) return;
         const positions = {} as Record<T, NodePosition>;
 
         // Recursively calculate positions for nodes
@@ -70,7 +72,7 @@ export class TreePlacer<T extends string | number | symbol> {
 
         calculatePositions([this.root], 0, 0);
 
-        const minX = Math.min(...Object.values(positions).map((pos: NodePosition) => pos.x));
+        const minX = Math.min(...Object.values(positions).map((pos) => (pos as NodePosition).x));
         for (const key in positions) {
             positions[key].x -= (minX - startPosition[0]);
             positions[key].y += startPosition[1];
@@ -79,3 +81,5 @@ export class TreePlacer<T extends string | number | symbol> {
         this.positions = positions;
     }
 }
+
+export default TreePlacer;

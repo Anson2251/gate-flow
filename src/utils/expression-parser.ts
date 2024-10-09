@@ -39,18 +39,20 @@ const tokenize = (expression: string) => {
 }
 
 export class ExpressionParser {
-    expression: string;
-    ast: AstNode;
+    expression: string = "";
+    ast: AstNode | null = null;
     constructor(expression: string) {
         this.setExpression(expression);
     }
 
     setExpression(expression: string) {
         this.expression = expression;
-        this.ast = this.parse();
+        const newAst = this.parse();
+        if(newAst) this.ast = newAst;
     }
 
     getVariables(): string[] {
+        if(!this.ast) return [];
         const variables = new Set<string>();
 
         const findRecursive = (expression: AstNode) => {
@@ -227,3 +229,5 @@ export class ExpressionParser {
         return evaluateRecursive(this.ast, input);
     }
 }
+
+export default ExpressionParser;
